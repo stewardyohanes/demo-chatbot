@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: crm-ai-chatbot-postgres
+    environment:
+      POSTGRES_USER: crm_ai
+      POSTGRES_PASSWORD: crm_ai
+      POSTGRES_DB: crm_ai_chatbot
+    ports:
+      - "5433:5432"
+    volumes:
+      - crm_ai_chatbot_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U crm_ai -d crm_ai_chatbot"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  crm_ai_chatbot_pgdata:
