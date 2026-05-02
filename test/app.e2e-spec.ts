@@ -6,11 +6,18 @@ import { AppModule } from './../src/app.module';
 
 describe('CRM AI Chatbot Service (e2e)', () => {
   let app: INestApplication<App>;
+  let originalAiServiceKey: string | undefined;
+  let originalDatabaseUrl: string | undefined;
+  let originalHfToken: string | undefined;
 
   beforeEach(async () => {
-    delete process.env.AI_SERVICE_KEY;
-    delete process.env.DATABASE_URL;
-    delete process.env.HF_TOKEN;
+    originalAiServiceKey = process.env.AI_SERVICE_KEY;
+    originalDatabaseUrl = process.env.DATABASE_URL;
+    originalHfToken = process.env.HF_TOKEN;
+
+    process.env.AI_SERVICE_KEY = '';
+    process.env.DATABASE_URL = '';
+    process.env.HF_TOKEN = '';
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
@@ -22,6 +29,9 @@ describe('CRM AI Chatbot Service (e2e)', () => {
 
   afterEach(async () => {
     await app.close();
+    restoreEnv('AI_SERVICE_KEY', originalAiServiceKey);
+    restoreEnv('DATABASE_URL', originalDatabaseUrl);
+    restoreEnv('HF_TOKEN', originalHfToken);
   });
 
   it('/health (GET)', async () => {
@@ -49,3 +59,12 @@ describe('CRM AI Chatbot Service (e2e)', () => {
       .expect(401);
   });
 });
+
+function restoreEnv(key: string, value: string | undefined): void {
+  if (value === undefined) {
+    delete process.env[key];
+    return;
+  }
+
+  process.env[key] = value;
+}

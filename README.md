@@ -73,6 +73,69 @@ Records answer quality feedback.
 }
 ```
 
+## Import From Existing CRM Database
+
+Run the AI database and service first:
+
+```bash
+docker compose up -d postgres
+yarn start:dev
+```
+
+In another terminal, configure the old CRM database source in `.env`:
+
+```env
+CRM_DATABASE_URL=postgres://postgres:password@localhost:5432/crm_astronacci
+AI_SERVICE_BASE_URL=http://localhost:3002
+AI_SERVICE_KEY=change-me
+CRM_INGEST_LIMIT_CHATS=50
+CRM_INGEST_MESSAGE_TYPES=TEXT
+CRM_INGEST_INCLUDE_BOT=false
+CRM_INGEST_EXCLUDE_SYSTEM=true
+```
+
+Start with a dry run:
+
+```bash
+CRM_INGEST_DRY_RUN=true yarn ingest:crm
+```
+
+Optionally export the exact ingest payloads to JSONL before posting them:
+
+```bash
+CRM_INGEST_DRY_RUN=true CRM_EXPORT_JSONL_PATH=exports/crm-history-sample.jsonl yarn ingest:crm
+```
+
+Then ingest a small batch:
+
+```bash
+CRM_INGEST_DRY_RUN=false CRM_INGEST_LIMIT_CHATS=20 yarn ingest:crm
+```
+
+The importer maps:
+
+- `chats.customer_phone` -> `customerId`
+- `CRM_INGEST_CHANNEL` -> `channel`
+- `chats.id` -> `crmChatId`
+- `messages.wamid || messages.id` -> `externalMessageId`
+- `messages.from_me=true` -> `senderRole=agent`
+- otherwise -> `senderRole=customer`
+- `tickets.status/rating/department_id/campaign_id` -> message metadata
+
+By default the importer keeps the first dataset clean:
+
+- includes only `messages.type=TEXT`
+- excludes `messages.from_bot=true`, so old vendor bot templates do not become knowledge
+- excludes obvious system log texts such as assign/takeover/chatbot-session logs
+
+Useful filters:
+
+```bash
+CRM_INGEST_CUSTOMER_PHONE=628xxxx yarn ingest:crm
+CRM_INGEST_SINCE=2026-05-01T00:00:00.000Z yarn ingest:crm
+CRM_INGEST_LIMIT_CHATS=5 CRM_EXPORT_JSONL_PATH=exports/check.jsonl CRM_INGEST_DRY_RUN=true yarn ingest:crm
+```
+
 ## CRM Integration Later
 
 Keep this service standalone until answer quality is acceptable. The CRM backend can later call it behind a per-channel feature flag: `RULE`, `AI_DRAFT`, or `AI`, after the existing `wamid` dedupe and before the legacy rule chatbot path.

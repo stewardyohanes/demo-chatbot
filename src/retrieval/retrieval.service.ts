@@ -28,11 +28,19 @@ export class RetrievalService {
 
   async retrieve(input: RetrieveInput): Promise<RetrievedContext[]> {
     const embedding = await this.embeddingProvider.embed(input.message);
+    const channelContexts = await this.store.searchKnowledge({
+      tenantId: input.tenantId,
+      channel: input.channel,
+      embedding,
+      limit: this.config.retrievalTopK,
+    });
+
+    if (channelContexts.length > 0) {
+      return channelContexts;
+    }
 
     return this.store.searchKnowledge({
       tenantId: input.tenantId,
-      channel: input.channel,
-      customerId: input.customerId,
       embedding,
       limit: this.config.retrievalTopK,
     });

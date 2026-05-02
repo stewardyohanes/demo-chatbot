@@ -29,8 +29,7 @@ export interface KnowledgeChunkInput {
 
 export interface SearchKnowledgeInput {
   tenantId: string;
-  channel: string;
-  customerId: string;
+  channel?: string;
   embedding: number[];
   limit: number;
 }
@@ -177,6 +176,18 @@ export class KnowledgeStore {
   async searchKnowledge(
     input: SearchKnowledgeInput,
   ): Promise<RetrievedContext[]> {
+    const params: unknown[] = [
+      input.tenantId,
+      this.toVectorLiteral(input.embedding),
+      input.limit,
+    ];
+    const filters = ['c.tenant_id = $1'];
+
+    if (input.channel) {
+      params.push(input.channel);
+      filters.push(`c.channel = $${params.length}`);
+    }
+
     const result = await this.database.query<{
       chunk_id: string;
       text: string;
@@ -192,19 +203,11 @@ export class KnowledgeStore {
         FROM knowledge_chunks kc
         JOIN knowledge_embeddings ke ON ke.chunk_id = kc.id
         JOIN conversations c ON c.id = kc.conversation_id
-        WHERE c.tenant_id = $1
-          AND c.channel = $2
-          AND c.customer_id = $3
-        ORDER BY ke.embedding <=> $4::vector
-        LIMIT $5
+        WHERE ${filters.join(' AND ')}
+        ORDER BY ke.embedding <=> $2::vector
+        LIMIT $3
       `,
-      [
-        input.tenantId,
-        input.channel,
-        input.customerId,
-        this.toVectorLiteral(input.embedding),
-        input.limit,
-      ],
+      params,
     );
 
     return result.rows.map((row) => ({
