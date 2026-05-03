@@ -199,7 +199,7 @@ export class KnowledgeStore {
           kc.id AS chunk_id,
           kc.text,
           kc.source_message_ids,
-          1 - (ke.embedding <=> $4::vector) AS score
+          1 - (ke.embedding <=> $2::vector) AS score
         FROM knowledge_chunks kc
         JOIN knowledge_embeddings ke ON ke.chunk_id = kc.id
         JOIN conversations c ON c.id = kc.conversation_id
